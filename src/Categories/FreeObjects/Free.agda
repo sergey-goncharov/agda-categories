@@ -1,6 +1,6 @@
 {-# OPTIONS --without-K --safe #-}
 
-module Categories.Objects.FreeObjects.Free where
+module Categories.FreeObjects.Free where
 
 open import Level
 open import Relation.Binary.PropositionalEquality using (_≡_; refl; cong)
@@ -70,22 +70,25 @@ module _  {C : Category o ℓ e} {D : Category o' ℓ' e'} (U : Functor D C) whe
            FX.η                        ≈˘⟨ C.identityʳ ⟩
            FX.η C.∘ C.id               ∎
            where
-            module FX = FreeObject (F X) using (η)
+             module FX = FreeObject (F X) using (η)
 
 
         hom-proof : ∀ {X : C.Obj} {Y : C.Obj} {Z : C.Obj} {f : C [ X , Y ]} {g : C [ Y , Z ]} →
             C [ (η (F Z) C.∘ (g C.∘ f)) ≈ (U.₁ (_* (F Y) (η (F Z) C.∘ g) D.∘ _* (F X) (η (F Y) C.∘ f) ) C.∘ η (F X)) ]
         hom-proof {X} {Y} {Z} {f} {g} =  begin
-          FZ.η C.∘ (g C.∘ f)                                                     ≈⟨ {! pullˡ (sym (FY.*-lift (FZ.η C.∘ g)))  !} ⟩   -- pullˡ (sym (FY.*-lift (FZ.η C.∘ g)))
-          (U.₁((FZ.η C.∘ g) FY.*) C.∘ FY.η) C.∘ f                                ≈⟨ {! pullʳ (sym (FX.*-lift (FY.η C.∘ f)))  !} ⟩   -- pullʳ (sym (FX.*-lift (FY.η C.∘ f)))
-          U.₁((FZ.η C.∘ g) FY.*) C.∘ (U.₁((FY.η C.∘ f) FX.*) C.∘ FX.η)           ≈⟨ {! pullˡ (sym (U.homomorphism))  !} ⟩           -- pullˡ (sym (U.homomorphism))
-          U.₁ ((FZ.η C.∘ g) FY.* D.∘ (FY.η C.∘ f) FX.*) C.∘ FX.η                 ∎
+          ηZ ∘ (g ∘ f)                                  ≈˘⟨ pushˡ (*-liftY (ηZ ∘ g)) ⟩
+          (U.₁ ((ηZ ∘ g) *Y) ∘ ηY) ∘ f                   ≈˘⟨ pushʳ (*-liftX (ηY ∘ f)) ⟩   
+          U.₁((ηZ ∘ g) *Y) ∘ (U.₁((ηY ∘ f) *X) ∘ ηX)     ≈˘⟨ pushˡ U.homomorphism ⟩        
+          U.₁ ((ηZ ∘ g) *Y D.∘ (ηY ∘ f) *X) ∘ ηX                    ∎
           where
             open MR C
             open C.Equiv
-            module FX =  FreeObject (F X) using (η; _*; *-lift)
-            module FY =  FreeObject (F Y) using (η; _*; *-lift)
-            module FZ =  FreeObject (F Z) using (η)
+            open Category C
+            
+            open FreeObject (F X) renaming (η to ηX; _* to _*X; *-lift to *-liftX)
+            open FreeObject (F Y) renaming (η to ηY; _* to _*Y; *-lift to *-liftY)
+            open FreeObject (F Z) renaming (η to ηZ; _* to _*Z; *-lift to *-liftZ)
+
 {-
             FZ.η C.∘ (g C.∘ f)                                              ≈˘⟨ C.assoc ⟩
             (FZ.η C.∘ g) C.∘ f                                              ≈˘⟨ (FY.*-lift (FZ.η C.∘ g) ⟩∘⟨refl ) ⟩
