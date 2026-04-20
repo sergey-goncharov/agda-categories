@@ -1,13 +1,16 @@
 {-# OPTIONS --without-K --safe #-}
 
-open import Level
+-- open import Level
 open import Categories.Category.Core
+
+open import Data.Fin using (Fin; zero) renaming (suc to nzero)
 
 module Categories.Category.Extensive.Properties {o ℓ e} (𝒞 : Category o ℓ e) where
 
 open import Categories.Category.Extensive using (Extensive)
-open import Categories.Diagram.Pullback using (Pullback; IsPullback)
-open import Categories.Object.Coproduct using (IsCoproduct)
+open import Categories.Diagram.Pullback using (Pullback; IsPullback; Pullback-resp-≈; unglue′) 
+open import Categories.Object.Coproduct using (IsCoproduct; Coproduct; IsCoproduct⇒Coproduct)
+
 import Categories.Morphism as M
 import Categories.Morphism.Reasoning as MR
 
@@ -19,104 +22,158 @@ open Equiv
 
 module _ (extensive : Extensive 𝒞) where
   open Extensive extensive
-  open CC using (_+_; i₁; i₂; ¡; +₁∘i₁; +₁∘i₂; ¡-unique₂; _+₁_; [_,_]; inject₁; inject₂; ∘-distribˡ-[])
+  open CC using (_+_; i₁; i₂; ¡; ⊥; +₁∘i₁; +₁∘i₂; ¡-unique₂; _+₁_; [_,_]; inject₁; inject₂; ∘-distribˡ-[]; []-cong₂; +₁∘+-swap)
+
+  -- For coproducts with equal injections there is at most one outgoing morphism
+  equal-inj : ∀ {A C D} (f : A ⇒ C) → IsCoproduct 𝒞 f f → (g h : C ⇒ D) → g ≈ h
+  equal-inj f cp g h = sym CP.g-η ○ CP.[]-cong₂ gf≈hf gf≈hf ○ CP.g-η
+    where
+      module CP = Coproduct (IsCoproduct⇒Coproduct 𝒞 cp)
+      gf≈hf = sym CP.inject₁ ○ CP.inject₂
+
+  to-⊥-is-iso : ∀ {A} (f : A ⇒ ⊥) → IsIso f
+  to-⊥-is-iso f .M.IsIso.inv = CC.initial.!
+  to-⊥-is-iso f .M.IsIso.iso .M.Iso.isoʳ = ¡-unique₂ _ _
+  to-⊥-is-iso f .M.IsIso.iso .M.Iso.isoˡ = equal-inj id (pullback-of-cp-is-cp' pb₁ pb₂) (CC.initial.! ∘ f) id
+    where
+      pb₁ : Pullback 𝒞 (i₁ ∘ f) i₁
+      pb₁ = record
+        { p₁ = id ; p₂ = f
+        ; isPullback = record
+            { commute         = identityʳ
+            ; universal       = λ {_} {h₁} {_} _ → h₁
+            ; p₁∘universal≈h₁ = identityˡ
+            ; p₂∘universal≈h₂ = λ {_} {_} {_} {eq} → pullback₁-is-mono {⊥} {⊥} _ _ (sym assoc ○ eq)
+            ; unique-diagram  = λ eq₁ _ → sym identityˡ ○ eq₁ ○ identityˡ
+            } }
+      pb₂ : Pullback 𝒞 (i₁ ∘ f) i₂
+      pb₂ = record
+        { p₁ = id ; p₂ = f
+        ; isPullback = record
+            { commute         = identityʳ ○ ∘-resp-≈ˡ (¡-unique₂ _ _)
+            ; universal       = λ {_} {h₁} {_} _ → h₁
+            ; p₁∘universal≈h₁ = identityˡ
+            ; p₂∘universal≈h₂ = λ {_} {_} {_} {eq} → pullback₁-is-mono {⊥} {⊥} _ _ (sym assoc ○ eq ○ sym (∘-resp-≈ˡ (¡-unique₂ _ _)))
+            ; unique-diagram  = λ eq₁ _ → sym identityˡ ○ eq₁ ○ identityˡ
+            } }
 
   -- The naturality square for i₁ is a pullback in any extensive category
-  i₁-naturalitySquare-isPullback : ∀ {A B C D} (f : A ⇒ B) (g : C ⇒ D)
-    → IsPullback 𝒞 f i₁ i₁ (f +₁ g)
-
-  i₁-naturalitySquare-isPullback {A} {B} {C} {D} f g = record
-                                                        { commute = sym +₁∘i₁
-                                                        ; universal = universal
-                                                        ; p₁∘universal≈h₁ = p₁∘universal≈h₁
-                                                        ; p₂∘universal≈h₂ = p₂∘universal≈h₂
-                                                        ; unique-diagram = λ _ eq₂ → pullback₁-is-mono _ _ eq₂
-                                                        }
+  i₁-cartesian : ∀ {A B C D} (f : A ⇒ B) (g : C ⇒ D) → IsPullback 𝒞 f i₁ i₁ (f +₁ g)
+  i₁-cartesian {A} {B} {C} {D} f g = record
+    { commute         = sym +₁∘i₁
+    ; universal       = universal
+    ; p₁∘universal≈h₁ = p₁∘universal≈h₁
+    ; p₂∘universal≈h₂ = p₂∘universal≈h₂
+    ; unique-diagram  = λ _ → pullback₁-is-mono _ _
+    }
     where
       open Pullback using (p₁; p₂; commute)
-      universal : ∀ {Q} {h₁ : Q ⇒ B} {h₂ : Q ⇒ A + C}
-        → i₁ ∘ h₁ ≈ (f +₁ g) ∘ h₂ → Q ⇒ A
+
+      universal : ∀ {Q} {h₁ : Q ⇒ B} {h₂ : Q ⇒ A + C} → i₁ ∘ h₁ ≈ (f +₁ g) ∘ h₂ → Q ⇒ A
       universal {_} {h₁} {h₂} eq = CP.[ p₂ pb₁ , ¡ ∘ u ]
         where
           pb₁ = pullback₁ h₂
           pb₂ = pullback₂ h₂
+          
           module CP = IsCoproduct (pullback-of-cp-is-cp h₂)
+          
           disj-eq : i₁ ∘ (h₁ ∘ p₁ pb₂) ≈ i₂ ∘ (g ∘ p₂ pb₂)
           disj-eq = begin
-            i₁ ∘ h₁ ∘ p₁ pb₂             ≈⟨ extendʳ eq ⟩
-            (f +₁ g) ∘ h₂ ∘ p₁ pb₂       ≈⟨ refl⟩∘⟨ commute pb₂ ⟩
-            (f +₁ g) ∘ i₂ ∘ p₂ pb₂       ≈⟨ extendʳ +₁∘i₂ ⟩
-            i₂ ∘ g ∘ p₂ pb₂              ∎
+            i₁ ∘ h₁ ∘ p₁ pb₂                     ≈⟨ extendʳ eq ⟩
+            (f +₁ g) ∘ h₂ ∘ p₁ pb₂               ≈⟨ refl⟩∘⟨ commute pb₂ ⟩
+            (f +₁ g) ∘ i₂ ∘ p₂ pb₂               ≈⟨ extendʳ +₁∘i₂ ⟩
+            i₂ ∘ g ∘ p₂ pb₂                      ∎
+            
           u = IsPullback.universal disjoint disj-eq
 
-      p₁∘universal≈h₁ : ∀ {Q} {h₁ : Q ⇒ B} {h₂ : Q ⇒ A + C}
-        {eq : i₁ ∘ h₁ ≈ (f +₁ g) ∘ h₂}
-        → f ∘ universal eq ≈ h₁
-      p₁∘universal≈h₁ {_} {h₁} {h₂} {eq} =
-        let pb₁ = pullback₁ h₂
-            pb₂ = pullback₂ h₂
-            cp  = pullback-of-cp-is-cp h₂
-            disj-eq : i₁ ∘ (h₁ ∘ p₁ pb₂) ≈ i₂ ∘ (g ∘ p₂ pb₂)
-            disj-eq = begin
-              i₁ ∘ h₁ ∘ p₁ pb₂       ≈⟨ extendʳ eq ⟩ 
-              (f +₁ g) ∘ h₂ ∘ p₁ pb₂ ≈⟨ refl⟩∘⟨ commute pb₂ ⟩
-              (f +₁ g) ∘ i₂ ∘ p₂ pb₂ ≈⟨ extendʳ inject₂ ⟩ 
-              i₂ ∘ g ∘ p₂ pb₂        ∎
-            u = IsPullback.universal disjoint disj-eq
-            -- h₁ ∘ p₁ pb₁ = f ∘ p₂ pb₁, by mono of i₁
-            h₁-pb₁ : h₁ ∘ p₁ pb₁ ≈ f ∘ p₂ pb₁
-            h₁-pb₁ = pullback₁-is-mono _ _ (begin
-              i₁ ∘ h₁ ∘ p₁ pb₁       ≈⟨ extendʳ eq ⟩ 
-              (f +₁ g) ∘ h₂ ∘ p₁ pb₁ ≈⟨ refl⟩∘⟨ commute pb₁ ⟩
-              (f +₁ g) ∘ i₁ ∘ p₂ pb₁ ≈⟨ extendʳ +₁∘i₁ ⟩ 
-              i₁ ∘ f ∘ p₂ pb₁        ∎)
-            -- h₁ ∘ p₁ pb₂ = ¡ ∘ u, from disjoint.p₁∘universal
-            h₁-pb₂ : h₁ ∘ p₁ pb₂ ≈ ¡ ∘ u
-            h₁-pb₂ = sym (IsPullback.p₁∘universal≈h₁ disjoint)
-        in {!!} {- begin
-          f ∘ IsCoproduct.[ cp ] (p₂ pb₁) (¡ ∘ u)
-            ≈⟨ ∘-distribˡ-[] ⟩
-          [ f ∘ p₂ pb₁ , f ∘ ¡ ∘ u ]
-            ≈⟨ IsCoproduct.[]-cong₂ cp refl (¡-unique₂ _ _) ⟩
-          [ f ∘ p₂ pb₁ , ¡ ∘ u ]
-            ≈⟨ IsCoproduct.[]-cong₂ cp (sym h₁-pb₁) (sym h₁-pb₂) ⟩
-          [ h₁ ∘ p₁ pb₁ , h₁ ∘ p₁ pb₂ ]
-            ≈⟨ sym (IsCoproduct.g-η cp) ⟩
-          h₁
-          ∎ -}
+      p₁∘universal≈h₁ : ∀ {Q} {h₁ : Q ⇒ B} {h₂ : Q ⇒ A + C} {eq : i₁ ∘ h₁ ≈ (f +₁ g) ∘ h₂} → f ∘ universal eq ≈ h₁
+      p₁∘universal≈h₁ {_} {h₁} {h₂} {eq} = begin
+          f ∘ CP.[ p₂ pb₁ , ¡ ∘ u ]            ≈⟨ CP.∘-distribˡ-[] ⟩
+          CP.[ f ∘ p₂ pb₁ , f ∘ ¡ ∘ u ]        ≈⟨ CP.[]-cong₂ refl (pullˡ (¡-unique₂ _ _)) ⟩
+          CP.[ f ∘ p₂ pb₁ , ¡ ∘ u ]            ≈⟨ CP.[]-cong₂ (sym h₁-pb₁) (sym h₁-pb₂) ⟩
+          CP.[ h₁ ∘ p₁ pb₁ , h₁ ∘ p₁ pb₂ ]     ≈⟨ CP.g-η ⟩
+          h₁                                   ∎
+        where
+          pb₁ = pullback₁ h₂
+          pb₂ = pullback₂ h₂
+          
+          module CP = Coproduct (IsCoproduct⇒Coproduct 𝒞 (pullback-of-cp-is-cp h₂))
+          
+          disj-eq : i₁ ∘ (h₁ ∘ p₁ pb₂) ≈ i₂ ∘ (g ∘ p₂ pb₂)
+          disj-eq = begin
+            i₁ ∘ h₁ ∘ p₁ pb₂                   ≈⟨ extendʳ eq ⟩
+            (f +₁ g) ∘ h₂ ∘ p₁ pb₂             ≈⟨ refl⟩∘⟨ commute pb₂ ⟩
+            (f +₁ g) ∘ i₂ ∘ p₂ pb₂             ≈⟨ extendʳ +₁∘i₂ ⟩
+            i₂ ∘ g ∘ p₂ pb₂                    ∎
+            
+          u = IsPullback.universal disjoint disj-eq
 
-      p₂∘universal≈h₂ : ∀ {Q} {h₁ : Q ⇒ B} {h₂ : Q ⇒ A + C}
-        {eq : i₁ ∘ h₁ ≈ (f +₁ g) ∘ h₂}
-        → i₁ ∘ universal eq ≈ h₂
-      p₂∘universal≈h₂ {_} {h₁} {h₂} {eq} =
-        let pb₁ = pullback₁ h₂
-            pb₂ = pullback₂ h₂
-            cp  = pullback-of-cp-is-cp h₂
-            disj-eq : i₁ ∘ (h₁ ∘ p₁ pb₂) ≈ i₂ ∘ (g ∘ p₂ pb₂)
-            disj-eq = begin
-              i₁ ∘ h₁ ∘ p₁ pb₂       ≈⟨ extendʳ eq ⟩ 
-              (f +₁ g) ∘ h₂ ∘ p₁ pb₂ ≈⟨ refl⟩∘⟨ commute pb₂ ⟩
-              (f +₁ g) ∘ i₂ ∘ p₂ pb₂ ≈⟨ extendʳ +₁∘i₂ ⟩ 
-              i₂ ∘ g ∘ p₂ pb₂        ∎
-            u = IsPullback.universal disjoint disj-eq
-            -- h₂ ∘ p₁ pb₁ = i₁ ∘ p₂ pb₁, by pullback commute
-            h₂-pb₁ : h₂ ∘ p₁ pb₁ ≈ i₁ ∘ p₂ pb₁
-            h₂-pb₁ = commute pb₁
-            -- h₂ ∘ p₁ pb₂ = i₂ ∘ p₂ pb₂ = ¡ ∘ u? We use ¡-unique₂
-            h₂-pb₂ : h₂ ∘ p₁ pb₂ ≈ ¡ ∘ u
-            h₂-pb₂ = begin
-              h₂ ∘ p₁ pb₂  ≈⟨ commute pb₂ ⟩
-              i₂ ∘ p₂ pb₂  ≈⟨ {!!} ⟩ -- ¡-unique₂ _ _ ⟩
-              ¡ ∘ u         ∎
-        in {!!} {- begin
-          i₁ ∘ IsCoproduct.[ cp ] (p₂ pb₁) (¡ ∘ u)
-            ≈⟨ ∘-distribˡ-[] ⟩
-          [ i₁ ∘ p₂ pb₁ , i₁ ∘ ¡ ∘ u ]
-            ≈⟨ IsCoproduct.[]-cong₂ cp refl (¡-unique₂ _ _) ⟩
-          [ i₁ ∘ p₂ pb₁ , ¡ ∘ u ]
-            ≈⟨ IsCoproduct.[]-cong₂ cp (sym h₂-pb₁) (sym h₂-pb₂) ⟩
-          [ h₂ ∘ p₁ pb₁ , h₂ ∘ p₁ pb₂ ]
-            ≈⟨ sym (IsCoproduct.g-η cp) ⟩
-          h₂
-          ∎ 
-          -}
+          h₁-pb₁ : h₁ ∘ p₁ pb₁ ≈ f ∘ p₂ pb₁
+          h₁-pb₁ = pullback₁-is-mono _ _ (begin
+            i₁ ∘ h₁ ∘ p₁ pb₁                   ≈⟨ extendʳ eq ⟩
+            (f +₁ g) ∘ h₂ ∘ p₁ pb₁             ≈⟨ refl⟩∘⟨ commute pb₁ ⟩
+            (f +₁ g) ∘ i₁ ∘ p₂ pb₁             ≈⟨ extendʳ +₁∘i₁ ⟩
+            i₁ ∘ f ∘ p₂ pb₁                    ∎)
+            
+          h₁-pb₂ : h₁ ∘ p₁ pb₂ ≈ ¡ ∘ u
+          h₁-pb₂ = sym (IsPullback.p₁∘universal≈h₁ disjoint)
+
+      p₂∘universal≈h₂ : ∀ {Q} {h₁ : Q ⇒ B} {h₂ : Q ⇒ A + C} {eq : i₁ ∘ h₁ ≈ (f +₁ g) ∘ h₂} → i₁ ∘ universal eq ≈ h₂
+      p₂∘universal≈h₂ {_} {h₁} {h₂} {eq} = begin
+          i₁ ∘ CP.[ p₂ pb₁ , ¡ ∘ u ]              ≈⟨ CP.∘-distribˡ-[] ⟩
+          CP.[ i₁ ∘ p₂ pb₁ , i₁ ∘ ¡ ∘ u ]         ≈⟨ CP.[]-cong₂ refl (pullˡ (¡-unique₂ _ _)) ⟩
+          CP.[ i₁ ∘ p₂ pb₁ , ¡ ∘ u ]              ≈⟨ CP.[]-cong₂ (sym h₂-pb₁) (sym h₂-pb₂) ⟩
+          CP.[ h₂ ∘ p₁ pb₁ , h₂ ∘ p₁ pb₂ ]        ≈⟨ CP.g-η ⟩
+          h₂                                      ∎
+          
+        where
+          pb₁ = pullback₁ h₂
+          pb₂ = pullback₂ h₂
+          
+          module CP = Coproduct (IsCoproduct⇒Coproduct 𝒞 (pullback-of-cp-is-cp h₂))
+          
+          disj-eq : i₁ ∘ (h₁ ∘ p₁ pb₂) ≈ i₂ ∘ (g ∘ p₂ pb₂)
+          disj-eq = begin
+            i₁ ∘ h₁ ∘ p₁ pb₂         ≈⟨ extendʳ eq ⟩
+            (f +₁ g) ∘ h₂ ∘ p₁ pb₂   ≈⟨ refl⟩∘⟨ commute pb₂ ⟩
+            (f +₁ g) ∘ i₂ ∘ p₂ pb₂   ≈⟨ extendʳ +₁∘i₂ ⟩
+            i₂ ∘ g ∘ p₂ pb₂          ∎
+            
+          u = IsPullback.universal disjoint disj-eq
+          
+          h₂-pb₁ : h₂ ∘ p₁ pb₁ ≈ i₁ ∘ p₂ pb₁
+          h₂-pb₁ = commute pb₁
+
+          u⁻¹    = M.IsIso.inv (to-⊥-is-iso u)
+          isoˡ-u = M.Iso.isoˡ (M.IsIso.iso (to-⊥-is-iso u))
+          
+          h₂-pb₂ : h₂ ∘ p₁ pb₂ ≈ ¡ ∘ u
+          h₂-pb₂ = begin
+            h₂ ∘ p₁ pb₂                  ≈⟨ commute pb₂ ⟩
+            i₂ ∘ p₂ pb₂                  ≈⟨ sym identityʳ ⟩
+            (i₂ ∘ p₂ pb₂) ∘ id           ≈⟨ refl⟩∘⟨ sym isoˡ-u ⟩
+            (i₂ ∘ p₂ pb₂) ∘ (u⁻¹ ∘ u)    ≈⟨ sym assoc ⟩
+            ((i₂ ∘ p₂ pb₂) ∘ u⁻¹) ∘ u    ≈⟨ ¡-unique₂ _ _ ⟩∘⟨refl ⟩
+            ¡ ∘ u                        ∎
+
+  -- The naturality square for i₂ is a pullback in any extensive category
+  i₂-cartesian : ∀ {A B C D} (f : A ⇒ B) (g : C ⇒ D) → IsPullback 𝒞 g i₂ i₂ (f +₁ g)
+  i₂-cartesian {A} {B} {C} {D} f g = unglue′ 𝒞 (sym +₁∘+-swap) (sym CC.coproducts.inject₂) jm other-pb
+   where
+     jm : JointMono₂ (f +₁ g) CC.coproducts.+-swap
+     jm h₁ h₂ h = {!swap-mono w!}
+       where
+         w = h (nzero zero)
+
+     other-pb : IsPullback 𝒞 g (CC.coproducts.+-swap ∘ i₂) (CC.coproducts.+-swap ∘ i₂) (g +₁ f)
+     other-pb .IsPullback.commute =
+       begin
+         (CC.coproducts.+-swap ∘ i₂) ∘ g       ≈⟨ inject₂ ⟩∘⟨refl ⟩
+         i₁ ∘ g                                ≈⟨ IsPullback.commute (i₁-cartesian g f) ⟩
+         (g +₁ f) ∘ i₁                         ≈⟨ refl ⟩∘⟨ inject₂ ⟨
+         (g +₁ f) ∘ CC.coproducts.+-swap ∘ i₂  ∎
+         
+     other-pb .IsPullback.universal eq = IsPullback.universal (i₁-cartesian g f) (∘-resp-≈ˡ (sym inject₂) ○ eq ) 
+     other-pb .IsPullback.p₁∘universal≈h₁ = IsPullback.p₁∘universal≈h₁ (i₁-cartesian g f) 
+     other-pb .IsPullback.p₂∘universal≈h₂ = ∘-resp-≈ˡ inject₂ ○ IsPullback.p₂∘universal≈h₂ (i₁-cartesian g f)  
+     other-pb .IsPullback.unique-diagram eq eq' = IsPullback.unique-diagram (i₁-cartesian g f) eq (sym (∘-resp-≈ˡ inject₂) ○ eq' ○ ∘-resp-≈ˡ inject₂) 
