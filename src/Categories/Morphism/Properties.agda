@@ -154,6 +154,24 @@ f ∘↠ g = record { mor = mor f ∘ mor g ; epi = Epi-∘ (epi f) (epi g) }
   where
     open _↠_
 
+Retract⇒Epi : ∀ {X Y} → (f : Retract X Y) → Epi (Retract.retract f)
+Retract⇒Epi {X}{Y} f g₁ g₂ eq = begin
+  g₁                                                   ≈⟨ identityʳ ⟨
+  g₁ ∘ id                                              ≈⟨ refl⟩∘⟨ Retract.is-retract f ⟨
+  g₁ ∘ Retract.retract f ∘ Retract.section f           ≈⟨ extendʳ eq ⟩ 
+  g₂ ∘ Retract.retract f ∘ Retract.section f           ≈⟨ refl⟩∘⟨ Retract.is-retract f ⟩
+  g₂ ∘ id                                              ≈⟨ identityʳ ⟩
+  g₂ ∎
+
+Retract⇒Mono : ∀ {X Y} → (f : Retract X Y) → Mono (Retract.section f)
+Retract⇒Mono {X}{Y} f g₁ g₂ eq = begin
+  g₁                                                   ≈⟨ identityˡ ⟨
+  id ∘ g₁                                              ≈⟨ Retract.is-retract f ⟩∘⟨refl ⟨
+  (Retract.retract f ∘ Retract.section f) ∘ g₁         ≈⟨ extendˡ eq ⟩ 
+  (Retract.retract f ∘ Retract.section f) ∘ g₂         ≈⟨ Retract.is-retract f ⟩∘⟨refl ⟩
+  id ∘ g₂                                              ≈⟨ identityˡ ⟩
+  g₂ ∎
+
 --------------------------------------------------------------------------------
 -- Isomorphism from a section and a retraction
 
