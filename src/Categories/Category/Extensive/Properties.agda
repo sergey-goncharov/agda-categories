@@ -107,19 +107,17 @@ module _ (extensive : Extensive 𝒞) where
           h₂-pb₂ : h₂ ∘ p₁ pb₂ ≈ ¡ ∘ clash eq
           h₂-pb₂ = begin
             h₂ ∘ p₁ pb₂                               ≈⟨ commute pb₂ ⟩
-            i₂ ∘ p₂ pb₂                               ≈⟨ identityʳ ⟨
-            (i₂ ∘ p₂ pb₂) ∘ id                        ≈⟨ refl⟩∘⟨ isoˡ ⟨
+            i₂ ∘ p₂ pb₂                               ≈⟨ introʳ isoˡ ⟩ 
             (i₂ ∘ p₂ pb₂) ∘ clash-inv ∘ clash eq      ≈⟨ pullˡ (¡-unique₂ _ _) ⟩ 
             ¡ ∘ clash eq                              ∎
 
       p₁∘universal≈h₁ : ∀ {Q} {h₁ : Q ⇒ B} {h₂ : Q ⇒ A + C} {eq : i₁ ∘ h₁ ≈ (f +₁ g) ∘ h₂} → f ∘ universal eq ≈ h₁
       p₁∘universal≈h₁ {_} {h₁} {h₂} {eq} = pullback₁-is-mono (f ∘ CP.[ p₂ pb₁ , ¡ ∘ clash eq ]) h₁
          (begin
-            i₁ ∘ f ∘ CP.[ p₂ pb₁ , ¡ ∘ clash eq ] ≈⟨ pullˡ (sym inject₁) ⟩ 
-            ((f +₁ g) ∘ i₁) ∘ CP.[ p₂ pb₁ , ¡ ∘ clash eq ] ≈⟨ pullʳ p₂∘universal≈h₂ ⟩ 
-            (f +₁ g) ∘ h₂ ≈⟨ eq ⟨ 
-            i₁ ∘ h₁  
-          ∎)
+            i₁ ∘ f ∘ CP.[ p₂ pb₁ , ¡ ∘ clash eq ]                ≈⟨ pushˡ inject₁ ⟨ 
+            ((f +₁ g) ∘ i₁) ∘ CP.[ p₂ pb₁ , ¡ ∘ clash eq ]       ≈⟨ pullʳ p₂∘universal≈h₂ ⟩ 
+            (f +₁ g) ∘ h₂                                        ≈⟨ eq ⟨ 
+            i₁ ∘ h₁                                              ∎)
            where
              pb₁ = pullback₁ h₂
              pb₂ = pullback₂ h₂
