@@ -84,29 +84,6 @@ module _ (extensive : Extensive 𝒞) where
           
           module CP = IsCoproduct (pullback-of-cp-is-cp h₂)
 
-      p₁∘universal≈h₁ : ∀ {Q} {h₁ : Q ⇒ B} {h₂ : Q ⇒ A + C} {eq : i₁ ∘ h₁ ≈ (f +₁ g) ∘ h₂} → f ∘ universal eq ≈ h₁
-      p₁∘universal≈h₁ {_} {h₁} {h₂} {eq} = begin
-          f ∘ CP.[ p₂ pb₁ , ¡ ∘ clash eq ]            ≈⟨ CP.∘-distribˡ-[] ⟩
-          CP.[ f ∘ p₂ pb₁ , f ∘ ¡ ∘ clash eq ]        ≈⟨ CP.[]-cong₂ refl (pullˡ (¡-unique₂ _ _)) ⟩
-          CP.[ f ∘ p₂ pb₁ , ¡ ∘ clash eq ]            ≈⟨ CP.[]-cong₂ h₁-pb₁ h₁-pb₂ ⟨
-          CP.[ h₁ ∘ p₁ pb₁ , h₁ ∘ p₁ pb₂ ]            ≈⟨ CP.g-η ⟩
-          h₁                                          ∎
-        where
-          pb₁ = pullback₁ h₂
-          pb₂ = pullback₂ h₂
-          
-          module CP = Coproduct (IsCoproduct⇒Coproduct (pullback-of-cp-is-cp h₂))
-
-          h₁-pb₁ : h₁ ∘ p₁ pb₁ ≈ f ∘ p₂ pb₁
-          h₁-pb₁ = pullback₁-is-mono _ _ (begin
-            i₁ ∘ h₁ ∘ p₁ pb₁                   ≈⟨ extendʳ eq ⟩
-            (f +₁ g) ∘ h₂ ∘ p₁ pb₁             ≈⟨ refl⟩∘⟨ commute pb₁ ⟩
-            (f +₁ g) ∘ i₁ ∘ p₂ pb₁             ≈⟨ extendʳ +₁∘i₁ ⟩
-            i₁ ∘ f ∘ p₂ pb₁                    ∎)
-            
-          h₁-pb₂ : h₁ ∘ p₁ pb₂ ≈ ¡ ∘ (clash eq)
-          h₁-pb₂ = sym (IsPullback.p₁∘universal≈h₁ disjoint)
-
       p₂∘universal≈h₂ : ∀ {Q} {h₁ : Q ⇒ B} {h₂ : Q ⇒ A + C} {eq : i₁ ∘ h₁ ≈ (f +₁ g) ∘ h₂} → i₁ ∘ universal eq ≈ h₂
       p₂∘universal≈h₂ {_} {h₁} {h₂} {eq} = begin
           i₁ ∘ CP.[ p₂ pb₁ , ¡ ∘ clash eq ]              ≈⟨ CP.∘-distribˡ-[] ⟩
@@ -125,16 +102,30 @@ module _ (extensive : Extensive 𝒞) where
           h₂-pb₁ = commute pb₁
 
           clash-inv = M.IsIso.inv (to-⊥-is-iso (clash eq))
-          isoˡ-u = M.Iso.isoˡ (M.IsIso.iso (to-⊥-is-iso (clash eq)))
+          isoˡ = M.Iso.isoˡ (M.IsIso.iso (to-⊥-is-iso (clash eq)))
           
           h₂-pb₂ : h₂ ∘ p₁ pb₂ ≈ ¡ ∘ clash eq
           h₂-pb₂ = begin
             h₂ ∘ p₁ pb₂                               ≈⟨ commute pb₂ ⟩
             i₂ ∘ p₂ pb₂                               ≈⟨ identityʳ ⟨
-            (i₂ ∘ p₂ pb₂) ∘ id                        ≈⟨ refl⟩∘⟨ isoˡ-u ⟨
+            (i₂ ∘ p₂ pb₂) ∘ id                        ≈⟨ refl⟩∘⟨ isoˡ ⟨
             (i₂ ∘ p₂ pb₂) ∘ clash-inv ∘ clash eq      ≈⟨ pullˡ (¡-unique₂ _ _) ⟩ 
             ¡ ∘ clash eq                              ∎
 
+      p₁∘universal≈h₁ : ∀ {Q} {h₁ : Q ⇒ B} {h₂ : Q ⇒ A + C} {eq : i₁ ∘ h₁ ≈ (f +₁ g) ∘ h₂} → f ∘ universal eq ≈ h₁
+      p₁∘universal≈h₁ {_} {h₁} {h₂} {eq} = pullback₁-is-mono (f ∘ CP.[ p₂ pb₁ , ¡ ∘ clash eq ]) h₁
+         (begin
+            i₁ ∘ f ∘ CP.[ p₂ pb₁ , ¡ ∘ clash eq ] ≈⟨ pullˡ (sym inject₁) ⟩ 
+            ((f +₁ g) ∘ i₁) ∘ CP.[ p₂ pb₁ , ¡ ∘ clash eq ] ≈⟨ pullʳ p₂∘universal≈h₂ ⟩ 
+            (f +₁ g) ∘ h₂ ≈⟨ eq ⟨ 
+            i₁ ∘ h₁  
+          ∎)
+           where
+             pb₁ = pullback₁ h₂
+             pb₂ = pullback₂ h₂
+          
+             module CP = Coproduct (IsCoproduct⇒Coproduct (pullback-of-cp-is-cp h₂))
+         
   -- The naturality square for i₂ is a pullback in any extensive category
   i₂-cartesian : ∀ {A B C D} (f : A ⇒ B) (g : C ⇒ D) → IsPullback g i₂ i₂ (f +₁ g)
   i₂-cartesian {A} {B} {C} {D} f g = unglue′ (sym +₁∘+-swap) (sym CC.inject₂) jm other-pb
